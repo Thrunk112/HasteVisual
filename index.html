@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Haste Visual beta</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+    }
+
+    #sidebar {
+      width: 250px;
+      padding: 10px;
+      background: #2e2e2e;
+      box-sizing: border-box;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex-shrink: 0;
+      color: #D4D4D4;
+    }
+
+    #sidebar.light-mode {
+      background: #f8f8f8;
+      color: #121212;
+    }
+
+    #main {
+      flex-grow: 1;
+      overflow: auto;
+      background: #252526;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #D4D4D4;
+    }
+
+    #main.light-mode {
+      background: #ffffff;
+      color: #000000;
+    }
+
+    canvas {
+      background: #252526;
+      color: #D4D4D4;
+    }
+
+    canvas.light-mode {
+      background: #ffffff;
+      color: #000000;
+    }
+
+
+    #legendAndLabel {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    #extraLabelContainer {
+      margin-top: -80px;
+      text-align: center;
+
+    }
+
+    #tooltip {
+      position: absolute;
+      padding: 5px 8px;
+      font-size: 12px;
+      pointer-events: none;
+      display: none;
+      z-index: 10;
+      background: #252526;
+      border: 1px solid #3C3C3C;
+      color: #D4D4D4;
+    }
+
+    #tooltip.light-mode {
+      background: #ffffff;
+      border: 1px solid #680505;
+      color: #000000;
+    }
+
+    #mainsection {
+      text-align: left;
+      max-width: 900px;
+      margin: 20px auto;
+      margin-top: 60px;
+      padding: 10px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    input,
+    select,
+    textarea {
+      background-color: #252526;
+      color: #D4D4D4;
+      border: 2px solid #3C3C3C;
+      padding: 4px;
+      border-radius: 4px;
+    }
+
+    input.light-mode,
+    select.light-mode,
+    textarea.light-mode {
+      background-color: #ffffff;
+      color: #121212;
+      border: 2px solid #aaa;
+    }
+
+    a {
+      color: #3399FF;
+      text-decoration: underline;
+    }
+
+    a:hover {
+      color: #66B2FF;
+    }
+
+    a.light-mode {
+      color: #0057b8;
+    }
+
+    a.light-mode:hover {
+      color: #003f7d;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Sidebar Controls -->
+  <div id="sidebar">
+    <label><input type="checkbox" id="darkModeToggle" checked />Dark Mode</label>
+    <fieldset>
+      <legend><strong>Fight Settings</strong></legend>
+      <label>Min Fight Time (s): <input id="minFightTime" type="number" value="14" step="1" min="0"
+          max="499" /></label><br>
+      <label>Max Fight Time (s): <input id="maxFightTime" type="number" value="18" step="1" min="1"
+          max="500" /></label><br><br>
+      <label>Current Static Haste: <br><span id="hasteDisplay">0.00%</span></label><br><br>
+    </fieldset><br>
+    <fieldset>
+      <legend><strong>Spell Settings</strong></legend>
+      <div>
+        <label><input type="radio" name="mode" value="cast" checked> Cast</label>
+        <label><input type="radio" name="mode" value="swing"> Swing</label>
+      </div><br>
+      <!-- SPELL DROPDOWN (used only in cast mode) -->
+      <div id="spellSelectContainer">
+        <label for="spellSelect">Spell:</label>
+        <select id="spellSelect">
+          <option value="fireball" selected>Fireball (Rank 12)</option>
+          <option value="scorch">Scorch (Rank 6)</option>
+          <option value="frostbolt">Frostbolt (Rank 11)</option>
+          <option value="arcane_missiles"> arcane missiles (Rank 8)</option>
+        </select>
+        <div id="castModeInputs" style="margin-top: 10px;">
+          <label for="spellPowerInput">Spell Power:</label><br>
+          <input type="number" id="spellPowerInput" value="800" step="1" min="0" max="9999" /><br>
+
+          <label for="critChanceInput">Crit Chance %:<br></label>
+          <input type="number" id="critChanceInput" value="30" step="1" min="0" max="100" /><br>
+          <label for="hitChanceInput">Hit %:<br></label>
+          <input type="number" id="hitChanceInput" value="16" step="1" min="0" max="20" /><br>
+          <label for="lvlInput">Level:<br></label>
+          <input type="number" id="lvlInput" value="60" step="1" min="1" max="60" /><br>
+
+          <label for="targetLvlInput">Target Level:<br></label>
+          <input type="number" id="targetLvlInput" value="63" step="1" min="1" max="63" /><br>
+
+          <label for="targetResistInput">Target Magic Resist:<br></label>
+          <input type="number" id="targetResistInput" value="0" step="1" min="0" max="315" /><br>
+        </div>
+        <label>Spell Latency (ms): <input id="latency" type="number" value="50" min="0" max="1500" /></label><br>
+        <div id="spellInfo" style="margin-top: 10px; font-size: 14px;"></div>
+      </div>
+
+
+      <!-- BASE TIME (used only in swing mode) -->
+      <div id="swingTimeContainer">
+        <label>Base Swing Time (s):
+          <input id="castTimeBase" type="number" step="0.1" value="2.5" />
+        </label>
+      </div>
+    </fieldset><br>
+    <fieldset>
+      <legend><strong>On-use Haste Sources</strong></legend>
+      <label><input type="checkbox" id="mqgToggle" /> MQG (33% haste for 20s)</label><br>
+      <label>Use at: <input type="number" id="mqgOffset" value="0" min="-30" max="200" step=".1" />sec</label><br>
+      <label><input type="checkbox" id="quicknessToggle" /> Potion of Quickness <br>(5% for 30s)</label><br>
+      <label>Use at: <input type="number" id="quicknessOffset" value="0" min="-30" max="200" />sec</label><br>
+      <label><input type="checkbox" id="jujuToggle" /> Juju Flurry <br>(3% haste for 20s,
+        60s CD)</label><br>
+      <label>Use at: <input type="number" id="jujuOffset" value="0" min="-30" max="200" />sec</label><br>
+      <label><input type="checkbox" id="chastiseToggle" /> Chastise <br>(20% haste for 8s,
+        40s CD)</label><br>
+      <label>Use at: <input type="number" id="chastiseOffset" value="0" min="-30" max="200" />sec</label>
+    </fieldset><br>
+    <fieldset>
+      <legend><strong>Static Haste Sources</strong></legend>
+      <div id="gearHasteInputs">
+        <label>Head: <input type="number" id="hasteHead" value="1" min="0" max="2" step="1"></label><br>
+        <label>Neck: <input type="number" id="hasteNeck" value="1" min="0" max="2" step="1"></label><br>
+        <label>Shoulder: <input type="number" id="hasteShoulder" value="2" min="0" max="2" step="1"></label><br>
+        <label>Back: <input type="number" id="hasteBack" value="1" min="0" max="2" step="1"></label><br>
+        <label>Chest: <input type="number" id="hasteChest" value="1" min="0" max="2" step="1"></label><br>
+        <label>Wrist: <input type="number" id="hasteWrist" value="0" min="0" max="2" step="1"></label><br>
+        <label>Hands: <input type="number" id="hasteHands" value="0" min="0" max="2" step="1"></label><br>
+        <label>Waist: <input type="number" id="hasteWaist" value="0" min="0" max="2" step="1"></label><br>
+        <label>Legs: <input type="number" id="hasteLegs" value="0" min="0" max="2" step="1"></label><br>
+        <label>Feet: <input type="number" id="hasteFeet" value="0" min="0" max="2" step="1"></label><br>
+        <label>Ring 1: <input type="number" id="hasteRing1" value="0" min="0" max="2" step="1"></label><br>
+        <label>Ring 2: <input type="number" id="hasteRing2" value="0" min="0" max="2" step="1"></label><br>
+        <label>Trinket 1: <input type="number" id="hasteTrinket1" value="0" min="0" max="2" step="1"></label><br>
+        <label>Trinket 2: <input type="number" id="hasteTrinket2" value="0" min="0" max="2" step="1"></label><br>
+        <label>Head Ench: <input type="number" id="hasteHeadEnch" value="0" min="0" max="2" step="1"></label><br>
+        <label>Shoulder Ench: <input type="number" id="hasteShoulderEnch" value="0" min="0" max="2"
+            step="2"></label><br>
+        <label>Hands Ench: <input type="number" id="hasteHandsEnch" value="0" min="0" max="1" step="1"></label><br>
+        <label>Legs Ench: <input type="number" id="hasteLegsEnch" value="0" min="0" max="2" step="1"></label><br>
+        <label>Weapon Ench: <input type="number" id="hasteWeaponEnch" value="0" min="0" max="2" step="1"></label><br>
+        <label>Main Hand: <input type="number" id="hasteMainHand" value="0" min="0" max="2" step="1"></label><br>
+        <label>Offhand: <input type="number" id="hasteOffhand" value="0" min="0" max="2" step="1"></label><br>
+        <label>Range: <input type="number" id="hasteRange" value="0" min="0" max="2" step="1"></label><br>
+        <label>Food Buff: <input type="number" id="hasteFood" value="0" min="0" max="2" step="2"></label><br>
+        <label>Atiesh (druid): <input type="number" id="hasteAtiesh" value="0" min="0" max="2" step="2"></label><br>
+        <label>Quickness (Racial): <input type="number" id="hasteQuickness" value="0" min="0" max="1"
+            step="1"></label><br>
+        <label>Other 1: <input type="number" id="hasteOther" value="0" min="0" max="10" step="1"></label><br>
+        <label>Other 2: <input type="number" id="hasteOtherTwo" value="0" min="0" max="10" step="1"></label><br>
+      </div>
+    </fieldset><br>
+    <fieldset>
+      <Legend><strong>Graph Settings</strong></Legend>
+      <label><input type="checkbox" id="showVerticalGrid" checked /> Show Base <span
+          class="modeName">Cast</span></label><br>
+      <label><input type="checkbox" id="showHasteLines" checked /> Show Hasted <span
+          class="modeName">Cast</span></label><br><br>
+      <label>Graph Max haste<input type="number" id="maxHaste" value="32" min="20" max="200" step="1"></label><br>
+      <label for="cellWidthSlider">Graph Width:<span id="cellWidthValue"> 40</span>%</label>
+      <input type="range" id="cellWidthSlider" min="5" max="100" value="40" step="5" /><br>
+      <label for="cellHeightSlider">Graph Height:<span id="cellHeightValue"> 20</span>%</label>
+      <input type="range" id="cellHeightSlider" min="10" max="50" step="10" value="20" /><br>
+    </fieldset>
+  </div>
+
+
+  <div id="main">
+    <h2>Haste Visualizer</h2>
+    <canvas id="gridCanvas" width="1800" height="800"></canvas>
+
+    <div id="extraLabelContainer">
+      <div id="extraBreakdownLabel" style="margin-top: 10px;"></div>
+      <div id="avgSwingsLabel" style="margin-top: 4px;"></div>
+      <p><u><strong>Marginal SP Haste Equiv</strong></u></p>
+      <div id="marginalCastLabel" style="margin-top: 10px;"></div>
+    </div>
+    <div id="mainsection">
+      <h3>Welcome!</h3>
+      <p>
+        This is a tool to give a visual representation to haste. The idea is to help explain how haste works and what
+        factors into the value of haste, not give definitive gear decisions. <br>General tips for using this tool:
+      <ul>
+        <li>This is best used for casters</li>
+        <li>If you move your feet, the timeline resets to 0. </li>
+        <li>If you cast an instant spell, you gain no time and could subtract 1.5 sec from max fight time.</li>
+        <li>If you cast a spell equal to 1.5 sec (keeping Scorch up), you potentially will be gaining no time depending
+          on gear haste and spell latency.</li>
+      </ul>
+      Check out Ash's <a
+        href="https://docs.google.com/spreadsheets/d/1eeo9LhGgSTjWY0so9z-ID_IuZDhajuIV4qSAZjJYq6U/edit?gid=0#gid=0"
+        target="_blank">Attack and Cast Speed Calculator</a> to see your exact cast times in each situation.
+      </p>
+      <h3>Haste on DPS Sims</h3>
+      <p>
+        Sims assume 100% uptime, but when you move for mechanics, the fight length (as far as haste is concerned) goes
+        back to zero.
+        Long fights should be simmed in segments; Patchwerk is the longest "stand-still and cast" fight for
+        most people.
+      </p>
+      <h3>Why does haste still have high value on trash?</h3>
+      <p>
+        One extra spell cast on a short trash pack where you get 3 casts
+        off instead of 2 is a huge percent increase in DPS,
+        whereas getting a 22nd cast off instead of 21, although more likely or guaranteed to occur, is less meaningful.
+        This is why
+        you will see sims value small amounts of haste highly even on short fight lengths. It really depends on the
+        fight length.<strong>The value haste provides is very RNG-heavy on trash, based on kill time, while it
+          normalizes on longer fights.</strong>
+      </p>
+      <h3>MQG and on-use Haste items</h3>
+      <p>
+        Haste items can create areas where haste has increased value because cast time is calculated at the
+        start of the cast and doesn’t modify mid-cast with haste items. Using MQG or a Juju Flurry after the start of
+        your cast time effectively wastes buff time until the next cast
+        begins. You can take advantage of this by hitting haste thresholds that allow a cast to begin just before the
+        buff wears
+        off. This little bit of haste that puts you over this threshold has insane marginal value and equates to a big
+        bonus
+        to extra casts. You can see these in the graph as little shelves where that 1% haste gives an unexpected bonus.
+        Kiss and other haste items work the same, but it’s most evident with the massive increase from MQG.
+        <img src="mqg.jpg" alt="mqg shelves" style="display:block; margin:auto; margin-top: 10px;">
+      </p>
+      <h3>Spell Cast Latency (& why you need Nampower)</h3>
+      <p>
+        AKA spell queuing latency/input lag, it's the amount of time after a cast finishes that it takes the server to
+        recognize the completion and let you begin casting a new spell.
+        The actual time it takes to go from the beginning of one cast to the next is the spell's base cast time
+        <strong>plus</strong> your spell cast latency.
+        This number will be lower in EU and higher in NA, but is never 0. You can find your spell latency by either
+        using an addon like <a href="https://github.com/pepopo978/CastTimer" target="_blank">CastTimer</a> or less
+        reliably by looking at
+        logs for a stand-and-cast fight like Patchwerk.
+        <strong>Note: this is NOT the same as server latency or ping.</strong>
+        <br><br>
+        You can learn more about this in the readme of <a href="https://github.com/pepopo978/nampower"
+          target="_blank">Nampower</a>.
+        Nampower aims to reduce spell queuing latency — it can be the difference between 80ms and 20ms in NA.
+      </p>
+      <h3>Why This Visualization Isn't for Melee</h3>
+      <p>
+        It's nice to understand the scaling of haste but it's impossible to accurately predict swing times like cast
+        times because of Windfury totem. Windfury is, in a way, a haste totem.
+        It completes your swing timer, providing some amount of haste dependent on gameplay
+        that can’t be calculated easily. On top of that, Flurry can be inconsistent.
+        You will never have clean predictable hasted cast times like a caster will.<br>
+      </p>
+      <h3>Healers and haste</h3>
+      <p>
+        Healers can use this visualization too, but the value will be lower than stated for healers for the following
+        reasons:
+      <ul>
+        <li>Healers cast a lot of instant cast spells, which don’t benefit from haste.</li>
+        <li> Healers cancel cast a lot, which is downtime and hurts haste value.</li>
+        <li> healers don’t necessarily have the same time constraint as DPS, you can continue healing after the
+          mob dies.</li>
+      </ul>
+      The "Extra cast" is more likely to be a sniped heal than increased raid output IMO.<br>
+      </p>
+      <h3>What causes less haste to give more casts?</h3>
+      <p><img src="time.jpg" alt="weird haste" style="display:block; margin:auto; margin-bottom:10px;"> Sometimes the graph will show
+        something like this above. This is the
+        result of popping a haste cd at a set fight time instead of with a cast/swing timer. Chastise will be
+        unpredictable, but other cd's like juju flurry, mqg, etc can be best used right before a new swing/cast begins.
+      </p>
+      <h4>Beta</h4>
+      <p>
+        This is not a finished product! Stuff is not perfect, and many sources of haste are missing. This is not a sim
+        and simply gives an
+        "on average" answer. The biggest bugs are listed below:
+      </p>
+      <ul>
+        <li>Spell Dmg assumes no resist and 100% hit. avg spell dmg will be lower in practice.</li>
+        <li>More spells needed.</li>
+        <li>Uses average instead of completed casts to allow for variable fight lengths.</li>
+        <li>Spell cast latency needs to auto set to 0 for Swing mode.</li>
+        <li>Missing all sources of Proc-based haste</li>
+        <li>Crit multiplier for heals and talents is not included; everything is x1.5.</li>
+        <li>Allow variable haste to begin at the start of the cast, as if macro’d.</li>
+        <li>More sources of variable haste (Berserking, etc.).</li>
+        <li>Not optimized, runs very slow if you make the graph large with many cast time events.</li>
+      </ul>
+      Ctrl+F5 to reset this page and all saved settings
+    </div>
+
+  </div>
+  <div id="tooltip"></div>
+  <script src="HasteCalc.js"></script>
+</body>
+
+</html>
